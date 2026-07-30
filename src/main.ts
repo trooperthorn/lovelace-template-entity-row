@@ -3,7 +3,11 @@ import { property } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { bindActionHandler } from "./helpers/action";
 import pjson from "../package.json";
-import { bind_template, hasTemplate } from "./helpers/templates";
+import {
+  bind_template,
+  unbind_template,
+  hasTemplate,
+} from "./helpers/templates";
 import { hass } from "./helpers/hass";
 
 const OPTIONS = [
@@ -43,10 +47,25 @@ class TemplateEntityRow extends LitElement {
   @property() config; // Rendered configuration of the row to display
   @property() _action;
 
+  /*
+  Strong references to the callbacks this row registered.
+
+  The shared template cache holds callbacks WEAKLY (see helpers/templates.ts),
+  so this array is what keeps template updates flowing while the row is alive --
+  and it is what lets us unsubscribe again on disconnect. Previously the
+  callbacks were anonymous closures passed straight to bind_template() and never
+  referenced anywhere, so nothing could unbind them: every row this card ever
+  created stayed reachable from window.cardMod_template_cache for the lifetime
+  of the page, together with its whole subtree.
+  */
+  _templateCallbacks: Array<(res: any) => void> = [];
+
   setConfig(config) {
     this._config = { ...config };
     this.config = { ...this._config };
 
+    // A previous config's callbacks are no longer wanted.
+    this._unbindTemplates();
     this.bind_templates();
   }
 
@@ -55,21 +74,37 @@ class TemplateEntityRow extends LitElement {
     for (const k of OPTIONS) {
       if (!this._config[k]) continue;
       if (hasTemplate(this._config[k])) {
-        bind_template(
-          (res) => {
-            const state = { ...this.config };
-            if (typeof res === "string") res = translate(hs, res);
-            state[k] = res;
-            this.config = state;
-          },
-          this._config[k],
-          { config: this._config }
-        );
+        const callback = (res) => {
+          const state = { ...this.config };
+          if (typeof res === "string") res = translate(hs, res);
+          state[k] = res;
+          this.config = state;
+        };
+        this._templateCallbacks.push(callback);
+        bind_template(callback, this._config[k], { config: this._config });
       } else if (typeof this._config[k] === "string") {
         this.config[k] = translate(hs, this._config[k]);
       }
     }
     this.requestUpdate();
+  }
+
+  _unbindTemplates() {
+    for (const callback of this._templateCallbacks) unbind_template(callback);
+    this._templateCallbacks = [];
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    // Rows can be detached and re-attached (a collapsed fold-entity-row, a view
+    // being revisited), so re-subscribe if we let go on the way out.
+    if (this._config && this._templateCallbacks.length === 0)
+      this.bind_templates();
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this._unbindTemplates();
   }
 
   async firstUpdated() {
