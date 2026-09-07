@@ -3,6 +3,7 @@ import { property } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
 import { handleAction, hasAction } from "custom-card-helpers";
 import { bindActionHandler } from "./helpers/action";
+import "./editor";
 import pjson from "../package.json";
 import {
   bind_template,
@@ -63,6 +64,14 @@ const translate = (hass, text: String) => {
 };
 
 class TemplateEntityRow extends LitElement {
+  static getConfigElement(): HTMLElement {
+    return document.createElement("template-entity-row-editor");
+  }
+
+  static getStubConfig(): Record<string, unknown> {
+    return { entity: "" };
+  }
+
   @property() _config;
   @property() hass;
   @property() config; // Rendered configuration of the row to display
