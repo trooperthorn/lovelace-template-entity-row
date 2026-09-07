@@ -40,19 +40,18 @@ repo's status against it honestly - including where it's short.
 
 ## Platinum (aspirational, not required)
 
-- [~] Visual regression testing - started, not finished. `playwright.config.ts`
-      + `e2e/row-rendering.spec.ts` screenshot this row's own wrapper/layout/CSS
+- [x] Visual regression testing, scoped: `playwright.config.ts` +
+      `e2e/row-rendering.spec.ts` screenshot this row's own wrapper/layout/CSS
       with `state-badge` stubbed as a plain placeholder (a real Home Assistant
       frontend internal, not available outside a running HA frontend), so
       these verify the part of the rendering this card actually controls, not
-      the full visual output a real instance would produce. Could not be run
-      or verified locally in the environment this was built in (no network
-      access to Playwright's browser CDN); `npx playwright test --list` did
-      confirm the config and test file are syntactically valid. The
-      `visual-regression.yml` workflow's comparison step runs with
-      `continue-on-error: true` until baseline screenshots are seeded - run
-      it once with `workflow_dispatch` and `update_snapshots: true`, then
-      remove `continue-on-error` so it becomes a real gate.
+      the full visual output a real instance would produce. Baselines seeded
+      and verified passing for real in CI 2026-09-07, after fixing a real
+      issue the first CI run caught: the row's `:host { display: inline }`
+      (correct for its real usage) gave Playwright no stable box to
+      screenshot standalone, fixed with a block-display test wrapper. Not
+      run locally - the sandboxed environment this was built in has no
+      network access to Playwright's browser CDN.
 - [ ] Live-verified against a real HA instance, not just unit-tested
 
 ## Known limitations (Gold requires documenting these, not hiding them)

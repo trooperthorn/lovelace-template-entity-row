@@ -46,12 +46,12 @@ jobs:
           git diff --cached --quiet && echo "No screenshot changes to commit." || git commit -m "chore: update visual regression baselines"
           git push origin HEAD:${{ github.ref_name }}
 
-      # continue-on-error until baselines are actually seeded - see the
-      # matching note in decluttering-card's copy of this workflow. Remove
-      # once e2e/__screenshots__ has real baseline images committed.
+      # Compares against the baselines committed in e2e/__screenshots__ -
+      # seeded 2026-09-07 and confirmed passing for real (not just
+      # continue-on-error masking a failure) before this became a blocking
+      # gate.
       - name: Compare against baseline screenshots
         if: "!(github.event_name == 'workflow_dispatch' && inputs.update_snapshots)"
-        continue-on-error: true
         run: npm run test:visual
       - name: Upload diff report on failure
         if: failure()
