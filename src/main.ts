@@ -1,6 +1,7 @@
 import { LitElement, html, css } from "lit";
 import { property } from "lit/decorators.js";
 import { classMap } from "lit/directives/class-map.js";
+import { handleAction, hasAction } from "custom-card-helpers";
 import { bindActionHandler } from "./helpers/action";
 import pjson from "../package.json";
 import {
@@ -129,23 +130,38 @@ class TemplateEntityRow extends LitElement {
   }
 
   async firstUpdated() {
-    // Hijack the action handler from the hidden generic entity row in the #staging area
-    // Much easier than trying to implement all of this ourselves
+    // Hijack the action handler from the hidden generic entity row in the #staging area.
+    //
+    // This still has to be a hijack, not a clean replacement: the gesture
+    // DETECTION half (tap vs. hold vs. double-tap, via HA's internal
+    // action-handler-directive) is not published anywhere a third-party card
+    // can import it from - custom-card-helpers only exports the DISPATCH
+    // half (handleAction/handleActionConfig below), which needs an action
+    // name already decided. hui-generic-entity-row wires up the real
+    // directive internally on its own markup, so hijacking its bound
+    // _handleAction (an arrow-function class field, so it stays correctly
+    // bound to gen_row's own hass/config when called from here) remains the
+    // practical way to reuse that detection.
     const gen_row = this.shadowRoot.querySelector(
       "#staging hui-generic-entity-row"
     ) as any;
     if (!gen_row) return;
     await gen_row.updateComplete;
     this._action = gen_row._handleAction;
+
+    // hasAction() (from custom-card-helpers) correctly treats an explicit
+    // `action: none` as "no action", unlike a plain truthy check - the
+    // previous options object also had a bug here: hasDoubleClick checked
+    // hold_action instead of double_tap_action.
     const options = {
-      hasHold: this._config.hold_action !== undefined,
-      hasDoubleClick: this._config.hold_action !== undefined,
+      hasHold: hasAction(this._config.hold_action),
+      hasDoubleClick: hasAction(this._config.double_tap_action),
     };
     if (
       this.config.entity ||
-      this.config.tap_action ||
-      this.config.hold_action ||
-      this.config.double_tap_action
+      hasAction(this._config.tap_action) ||
+      hasAction(this._config.hold_action) ||
+      hasAction(this._config.double_tap_action)
     ) {
       bindActionHandler(this.shadowRoot.querySelector("state-badge"), options);
       bindActionHandler(this.shadowRoot.querySelector(".info"), options);
@@ -153,7 +169,26 @@ class TemplateEntityRow extends LitElement {
   }
 
   _actionHandler(ev) {
-    return this._action?.(ev);
+    if (this._action) return this._action(ev);
+    // Defensive fallback: if a future Home Assistant version restructures
+    // hui-generic-entity-row and the hijack above finds nothing to bind to,
+    // still dispatch tap/hold/double_tap through the same public
+    // handleAction() the hijack would otherwise have used internally -
+    // degrades to "the row still does something" instead of a silently
+    // dead row.
+    const action = ev?.detail?.action;
+    if (!action || !this.hass) return undefined;
+    return handleAction(this, this.hass, this.config, action);
+  }
+
+  // Accessibility: the `.info` div is a real click target (has_action) but
+  // was keyboard-unreachable - a mouse-only row on a card type used
+  // throughout a dashboard is a real gap, not a cosmetic one. Enter/Space
+  // triggers the same tap action a click would.
+  _keyHandler(ev: KeyboardEvent) {
+    if (ev.key !== "Enter" && ev.key !== " ") return;
+    ev.preventDefault();
+    this._actionHandler({ detail: { action: "tap" } });
   }
 
   render() {
@@ -205,9 +240,9 @@ class TemplateEntityRow extends LitElement {
     const show_toggle = this.config.toggle && this.config.entity;
     const has_action =
       this.config.entity ||
-      this.config.tap_action ||
-      this.config.hold_action ||
-      this.config.double_tap_action;
+      hasAction(this.config.tap_action) ||
+      hasAction(this.config.hold_action) ||
+      hasAction(this.config.double_tap_action);
 
     return html`
       <div id="wrapper" class="${hidden ? "hidden" : ""}">
@@ -224,6 +259,10 @@ class TemplateEntityRow extends LitElement {
         <div
           class=${classMap({ info: true, pointer: has_action })}
           @action="${this._actionHandler}"
+          @keydown=${has_action ? this._keyHandler : undefined}
+          role=${has_action ? "button" : "presentation"}
+          tabindex=${has_action ? "0" : "-1"}
+          aria-label=${typeof name === "string" ? name : ""}
         >
           ${name}
           <div class="secondary">${secondary}</div>
