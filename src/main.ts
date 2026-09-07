@@ -19,10 +19,9 @@ const OPTIONS = [
   "condition",
   "image",
   "entity",
-  // Secret option -
-  // Set color to a hs-color value ("[<hue>,<saturation>]")
-  // with hue in the range 0-360 and saturation 0-100.
-  // Works only if entity is unset and active is set.
+  // Set color to a hs-color value ("[<hue>,<saturation>]") with hue in the
+  // range 0-360 and saturation 0-100. Works only if entity is unset and
+  // active is set.
   "color",
   "toggle",
   "tap_action",
@@ -31,6 +30,27 @@ const OPTIONS = [
 ];
 
 const LOCALIZE_PATTERN = /_\([^)]*\)/g;
+
+// Phase B: bind area/label/device_class as plain Jinja variables, in the same
+// convenience-context slot helpers/templates.ts already uses for
+// user/browser/hash, so a template can write `{{ area }}` instead of
+// `{{ area_name(config.entity) }}` every time. Resolved via a Jinja preamble
+// rather than a JS-side registry lookup (like decluttering-card's
+// registry-lookup.ts needs), since this card already has a real backend
+// Jinja renderer to lean on - `area_name()`/`state_attr()` are long-stable
+// HA template functions; `labels()` (entity -> label ids) is newer and is
+// the one piece of this that still needs checking against a live instance.
+export function withEntityContext(templateStr: string, entityId: string | undefined): string {
+  if (!entityId) return templateStr;
+  const entityLiteral = JSON.stringify(entityId);
+  return (
+    `{% set entity = ${entityLiteral} %}` +
+    `{% set area = area_name(entity) or '' %}` +
+    `{% set label = (labels(entity) | default([]) | join(', ')) %}` +
+    `{% set device_class = state_attr(entity, 'device_class') or '' %}` +
+    templateStr
+  );
+}
 
 const translate = (hass, text: String) => {
   return text.replace(LOCALIZE_PATTERN, (key) => {
@@ -81,7 +101,8 @@ class TemplateEntityRow extends LitElement {
           this.config = state;
         };
         this._templateCallbacks.push(callback);
-        bind_template(callback, this._config[k], { config: this._config });
+        const templateStr = withEntityContext(this._config[k], this._config.entity);
+        bind_template(callback, templateStr, { config: this._config });
       } else if (typeof this._config[k] === "string") {
         this.config[k] = translate(hs, this._config[k]);
       }
@@ -150,10 +171,20 @@ class TemplateEntityRow extends LitElement {
     const image = this.config.image;
     let color = this.config.color;
 
+    // `name` can be a plain string (or a Jinja template resolving to one,
+    // handled entirely in bind_templates - a config value that isn't a
+    // string never reaches hasTemplate's string check, so an object survives
+    // untouched here) or the structured EntityNameItem shape hass.
+    // formatEntityName accepts (available since HA 2026.4) - the same
+    // registry-composed naming built-in cards use, e.g.
+    // `name: [{type: area}, {type: entity}]`.
+    const nameConfig = this.config.name;
     const name =
-      this.config.name ??
-      entity?.attributes?.friendly_name ??
-      entity?.entity_id;
+      nameConfig && typeof nameConfig === "object"
+        ? (this.hass.formatEntityName?.(entity, nameConfig) ??
+            entity?.attributes?.friendly_name ??
+            entity?.entity_id)
+        : nameConfig ?? entity?.attributes?.friendly_name ?? entity?.entity_id;
     const secondary = this.config.secondary;
     const state = this.config.state ?? base?.state;
     let stateColor = true;
@@ -225,6 +256,17 @@ class TemplateEntityRow extends LitElement {
         }
         .state {
           text-align: right;
+        }
+        /*
+        A templated \`secondary\` can legitimately contain newlines (a Jinja
+        template producing multiple lines of status text). Normal HTML
+        collapses them; this preserves them while still wrapping long lines,
+        unlike upstream's #84 draft fix, which used the harder "pre" value
+        and only applied it when the row happened to be clickable - multiline
+        secondary text is a display concern, not an interactivity one.
+        */
+        .secondary {
+          white-space: pre-line;
         }
         #wrapper {
           min-height: 40px;

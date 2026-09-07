@@ -56,6 +56,25 @@ Jinja templates have access to a few special variables. Those are:
 - `user` - the username of the currently logged in user
 - `browser` - the deviceID of the current browser (see [browser_mod](https://github.com/thomasloven/hass-browser_mod)).
 - `hash` - the hash part of the current URL.
+- `entity` - the row's `entity` (equivalent to `config.entity`, provided as a
+  shorter alias).
+- `area` - the name of the area `entity` is assigned to, or an empty string
+  if it isn't in one.
+- `label` - a comma-separated list of the labels assigned to `entity`, or an
+  empty string if it has none.
+- `device_class` - `entity`'s `device_class` attribute, or an empty string.
+
+`name` also accepts the structured form `hass.formatEntityName` takes
+(available since Home Assistant 2026.4) instead of a string or template -
+the same registry-composed naming built-in cards use:
+
+```yaml
+- type: custom:template-entity-row
+  entity: sensor.living_room_thermostat_temperature
+  name:
+    - type: area
+    - type: entity
+```
 
 In evaluated templates the function `_(<key>)` (underscore) will localize the `<key>` to the current language.
 E.g. `_(state.binary_sensor.motion.off)` will be replaced with `Clear` if your language is set to English.
