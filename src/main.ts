@@ -188,7 +188,7 @@ class TemplateEntityRow extends LitElement {
           .overrideImage=${image}
           .color=${color}
           class=${classMap({ pointer: has_action })}
-          ?stateColor=${stateColor}
+          .stateColor=${stateColor}
         ></state-badge>
         <div
           class=${classMap({ info: true, pointer: has_action })}
