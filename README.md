@@ -18,6 +18,8 @@ resources:
 
 **Note:** This is _not_ a card. It's a row for an [entities](https://www.home-assistant.io/lovelace/entities/).
 
+A visual editor is available (open the row's own gear icon from the entities card editor) for the non-templated common case - `icon`, `name`, `secondary`, `state`, `condition`, `image`, `color`, `toggle`, and the three actions. It uses plain text fields rather than typed pickers for most of them, since every field here also accepts a Jinja template, which a typed picker would reject or mangle; edit the YAML directly for anything more advanced.
+
 ![Skärminspelning 2020-01-03 kl  23 03 16 mov](https://user-images.githubusercontent.com/1299821/71752529-b627b000-2e7f-11ea-87ad-3b8f2d2cfe99.gif)
 
 ```yaml
