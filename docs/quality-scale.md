@@ -28,7 +28,13 @@ repo's status against it honestly - including where it's short.
 
 - [x] Tagged, versioned GitHub Releases HACS can install a specific version
       from, not just whatever's on the default branch (`release.yml`,
-      `workflow_dispatch`-triggered)
+      `workflow_dispatch`-triggered). CalVer (`YYYY.MM.DD.N`), matching
+      Sean's other HA repos and now identical to `decluttering-card`'s own
+      setup - same `.release.json` + `scripts/set_version.py`/
+      `release_config.py`, copied verbatim (already generic). Superseded an
+      earlier manual-semver-input version of this workflow, which shipped a
+      one-off `v1.5.0` release before this rule was established - that
+      release is still published and hasn't been removed.
 - [x] Accessibility considered for interactive elements (keyboard activation,
       ARIA role/label on the row's click target)
 - [x] Known limitations documented rather than silently assumed away (see
@@ -71,10 +77,3 @@ repo's status against it honestly - including where it's short.
   public `handleAction()` if that hijack ever finds nothing to bind to. This
   is the practical approach today, not a defect, but it's inherently coupled
   to an HA internal that could change without notice.
-- **This fork does not run semantic-release / enforce conventional commits**
-  the way its sibling `decluttering-card` fork does. That's a deliberate
-  choice, not an oversight: this repo's commit history (much of it inherited
-  from upstream) doesn't follow that convention, and retrofitting it wasn't
-  worth the process change for what this fork needs. `release.yml` gives the
-  same *outcome* (a real tagged, versioned GitHub Release) via a manual
-  version input instead.

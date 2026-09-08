@@ -1,10 +1,17 @@
 # Changelog
 
-Hand-maintained (this fork doesn't run semantic-release/conventional-commit
-automation like its sibling `decluttering-card` does - see `docs/quality-scale.md`
-for why that wasn't imported wholesale here).
+Hand-maintained.
 
 ## Unreleased
+
+### Changed
+
+- Releases now use CalVer (`YYYY.MM.DD.N`), matching Sean's other HA repos
+  and now identical to `decluttering-card`'s own convention - the same
+  `.release.json` + `scripts/set_version.py`/`release_config.py`, copied
+  verbatim (already generic). Supersedes the earlier manual-semver-input
+  `release.yml`, which shipped a one-off `v1.5.0` before this rule was
+  established.
 
 ### Added
 
