@@ -58,7 +58,14 @@ repo's status against it honestly - including where it's short.
       screenshot standalone, fixed with a block-display test wrapper. Not
       run locally - the sandboxed environment this was built in has no
       network access to Playwright's browser CDN.
-- [ ] Live-verified against a real HA instance, not just unit-tested
+- [x] Live-verified against a real HA instance, not just unit-tested.
+      Deployed 2026-09-07/08 to a real HA 2026.9.1 instance (El Rancho
+      Assist): the row loads and registers cleanly (`TEMPLATE-ENTITY-ROW
+      2026.09.07.1 IS INSTALLED` in the console, no errors) inside a
+      `fold-entity-row` block on a live dashboard. The `labels()` Jinja
+      function risk noted below was not specifically exercised by anything
+      on this instance's dashboards - still worth confirming directly if a
+      future template actually calls it.
 
 ## Known limitations (Gold requires documenting these, not hiding them)
 
